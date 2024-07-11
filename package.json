@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "pg": "^8.12.0"
+  },
+  "name": "smallcase-update",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
+  },
+  "author": "",
+  "license": "ISC"
+}
