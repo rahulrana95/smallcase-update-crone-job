@@ -12,6 +12,8 @@ const keys = {
   cookies: process.env.cookies,
 };
 const { Client } = require("pg");
+require('dotenv').config();
+
 
 function formatNumberToLakhsCrores(number) {
   if (typeof number !== "number" || isNaN(number)) {
@@ -80,6 +82,9 @@ const smallcaseData = {
 
 const client = new Client({
   connectionString: process.env.dbURL,
+  ssl: {
+    rejectUnauthorized: false, // This disables strict SSL certificate verification
+  }
 });
 
 function displayError(message) {
@@ -121,11 +126,41 @@ function displayBox(message, colorCode) {
   boxLines.forEach((line) => console.log(line));
   console.log(bottomBorder);
 }
+
 async function connectToDb() {
-    await client.connect();
-    displaySuccess("connection successful");
+    try {
+      if (!client._connected) {
+        await client.connect();
+        displaySuccess("Connection successful");
+      } else {
+        displayInfo("Already connected to the database");
+      }
+    } catch (err) {
+      displayError("Error connecting to the database: " + err.message);
+    }
+  }
+
+async function fetchLast5Rows() {
+    try {
+        await connectToDb();
+      const fetchLast5Query = `
+        SELECT *
+        FROM smallcaseInvestment
+        ORDER BY date DESC
+        LIMIT 5;
+      `;
   
-}
+      const result = await client.query(fetchLast5Query);
+  
+      // Displaying the fetched rows
+      console.log('Last 5 rows:');
+      console.table(result.rows); // Using console.table for formatted output
+  
+    } catch (err) {
+      console.error('Error fetching last 5 rows:', err.message);
+    } finally {
+    }
+  }
 
 async function createTable() {
   await connectToDb()
@@ -133,9 +168,9 @@ async function createTable() {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS smallcaseInvestment (
       id SERIAL PRIMARY KEY,
-      totalValue DECIMAL,
-      totalReturns DECIMAL,
-      totalReturnPercentage DECIMAL,
+      totalValue TEXT,
+      totalReturns TEXT,
+      totalReturnPercentage TEXT,
       date DATE UNIQUE
     );
   `;
@@ -146,7 +181,7 @@ async function createTable() {
   } catch (err) {
     displayError("Error creating table:", err);
   } finally {
-    await client.end();
+    //displaySuccess("client closed")
   }
 }
 
@@ -156,7 +191,7 @@ async function insertData(
   totalReturnPercentage,
   date
 ) {
-  await client.connect();
+
 
   const checkDateQuery = "SELECT * FROM smallcaseInvestment WHERE date = $1";
   const insertDataQuery = `
@@ -168,20 +203,25 @@ async function insertData(
   try {
     const res = await client.query(checkDateQuery, [date]);
     if (res.rows.length === 0) {
-      await client.query(insertDataQuery, [
+      const res32 = await client.query(insertDataQuery, [
         totalValue,
         totalReturns,
         totalReturnPercentage,
         date,
       ]);
+
+      console.log(res32)
       displaySuccess("Data inserted successfully.");
     } else {
       displayError("Data for this date already exists.");
     }
   } catch (err) {
-    displayError("Error inserting data:", err);
+    displayError("Error inserting data:");
+    displayError(err);
+    console.log(err);
   } finally {
-    await client.end();
+    // await client.end();
+    // displaySuccess("client closed")
   }
 }
 
@@ -240,10 +280,13 @@ fetch("https://api.smallcase.com/sam/investment/total", {
         smallcaseData.totalPnlPercent,
         getFormattedDate()
       );
-      displaySuccess("db updated susscessfully.");
+      await fetchLast5Rows();
+      await client.end();
     })();
   })
   .catch((err) => {
     displayError(err);
     displayError("Something is wrong in fetching net value from smallcase.");
+  }).finally(async () => {
+    
   });
