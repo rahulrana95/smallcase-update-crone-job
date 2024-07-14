@@ -3,9 +3,10 @@ const { Client } = require("pg");
 require('dotenv').config();
 
 const keys = {
-    csrfToken: process.env.csrftoken,
-    cookies: process.env.cookies,
-  };
+  csrfToken: process.env.csrftoken,
+  cookies: process.env.cookies,
+};
+
 function formatNumberToLakhsCrores(number) {
   if (typeof number !== "number" || isNaN(number)) {
     throw new TypeError("Input must be a valid number");
@@ -21,14 +22,13 @@ function formatNumberToLakhsCrores(number) {
 
   let formattedNumber;
 
-  if (number < lakhThreshold) {
-    formattedNumber = number.toLocaleString("en-IN");
-  } else if (number < croreThreshold) {
-    const lakhs = (number / lakhThreshold).toFixed(2);
-    formattedNumber = `${lakhs} Lakh`;
+  if (number < croreThreshold) {
+    // convert each value to crores
+    const crores = (number / croreThreshold).toFixed(2);
+    formattedNumber = crores;
   } else {
     const crores = (number / croreThreshold).toFixed(2);
-    formattedNumber = `${crores} Crore`;
+    formattedNumber = crores;
   }
 
   return isNegative ? `- ${formattedNumber}` : formattedNumber;
@@ -78,6 +78,7 @@ const client = new Client({
   }
 });
 
+
 function displayError(message) {
   displayBox(message, "31");
 }
@@ -119,39 +120,39 @@ function displayBox(message, colorCode) {
 }
 
 async function connectToDb() {
-    try {
-      if (!client._connected) {
-        await client.connect();
-        displaySuccess("Connection successful");
-      } else {
-        displayInfo("Already connected to the database");
-      }
-    } catch (err) {
-      displayError("Error connecting to the database: " + err.message);
+  try {
+    if (!client._connected) {
+      await client.connect();
+      displaySuccess("Connection successful");
+    } else {
+      displayInfo("Already connected to the database");
     }
+  } catch (err) {
+    displayError("Error connecting to the database: " + err.message);
   }
+}
 
 async function fetchLast5Rows() {
-    try {
-        await connectToDb();
-      const fetchLast5Query = `
+  try {
+    await connectToDb();
+    const fetchLast5Query = `
         SELECT *
         FROM smallcaseInvestment
         ORDER BY date DESC
         LIMIT 5;
       `;
-  
-      const result = await client.query(fetchLast5Query);
-  
-      // Displaying the fetched rows
-      console.log('Last 5 rows:');
-      console.table(result.rows); // Using console.table for formatted output
-  
-    } catch (err) {
-      console.error('Error fetching last 5 rows:', err.message);
-    } finally {
-    }
+
+    const result = await client.query(fetchLast5Query);
+
+    // Displaying the fetched rows
+    console.log('Last 5 rows:');
+    console.table(result.rows); // Using console.table for formatted output
+
+  } catch (err) {
+    console.error('Error fetching last 5 rows:', err.message);
+  } finally {
   }
+}
 
 async function createTable() {
   await connectToDb()
@@ -221,7 +222,7 @@ function getFormattedDate() {
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
-  return `${day}-${month}-${year}`;
+  return `${year}/${month}/${day}`;
 }
 
 fetch("https://api.smallcase.com/sam/investment/total", {
@@ -254,9 +255,7 @@ fetch("https://api.smallcase.com/sam/investment/total", {
     const { returns } = response.data.total;
     smallcaseData.totalReturns = formatNumberToLakhsCrores(returns.networth);
     smallcaseData.netPL = formatNumberToLakhsCrores(returns.totalPnl);
-    smallcaseData.totalPnlPercent = `${formatNumberToLakhsCrores(
-      returns.totalPnlPercent
-    )} %`;
+    smallcaseData.totalPnlPercent = returns.totalPnlPercent.toFixed(2);
 
     console.log("Here is data from smallcase");
     displayInfo(smallcaseData);
@@ -278,5 +277,5 @@ fetch("https://api.smallcase.com/sam/investment/total", {
     displayError(err);
     displayError("Something is wrong in fetching net value from smallcase.");
   }).finally(async () => {
-    
+
   });
