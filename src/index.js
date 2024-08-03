@@ -24,10 +24,10 @@ function formatNumberToLakhsCrores(number) {
 
   if (number < croreThreshold) {
     // convert each value to crores
-    const crores = (number / croreThreshold).toFixed(2);
+    const crores = (number / croreThreshold).toFixed(5);
     formattedNumber = crores;
   } else {
-    const crores = (number / croreThreshold).toFixed(2);
+    const crores = (number / croreThreshold).toFixed(5);
     formattedNumber = crores;
   }
 
@@ -177,6 +177,8 @@ async function createTable() {
   }
 }
 
+
+
 async function insertData(
   totalValue,
   totalReturns,
@@ -184,6 +186,8 @@ async function insertData(
   date
 ) {
 
+//   await client.query(`ALTER TABLE smallcaseInvestment 
+// ADD CONSTRAINT unique_date UNIQUE (date);`);
 
   const checkDateQuery = "SELECT * FROM smallcaseInvestment WHERE date = $1";
   const insertDataQuery = `
@@ -216,6 +220,7 @@ async function insertData(
     // displaySuccess("client closed")
   }
 }
+
 
 function getFormattedDate() {
   const date = new Date();
@@ -255,7 +260,7 @@ fetch("https://api.smallcase.com/sam/investment/total", {
     const { returns } = response.data.total;
     smallcaseData.totalReturns = formatNumberToLakhsCrores(returns.networth);
     smallcaseData.netPL = formatNumberToLakhsCrores(returns.totalPnl);
-    smallcaseData.totalPnlPercent = returns.totalPnlPercent.toFixed(2);
+    smallcaseData.totalPnlPercent = returns.totalPnlPercent.toFixed(5);
 
     console.log("Here is data from smallcase");
     displayInfo(smallcaseData);
